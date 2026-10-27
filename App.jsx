@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, UserPlus, CheckCircle2, Clock, XCircle, Send, Award, BookOpen, 
   Search, FileText, Download, ShieldCheck, MessageSquare, Plus, Trash2, 
-  ExternalLink, Sparkles, Filter, Lock, Unlock, Check, Eye, UserCheck, Phone, RefreshCw
+  ExternalLink, Sparkles, Filter, Lock, Unlock, Check, Eye, UserCheck, Phone, RefreshCw, MoreHorizontal, Edit3
 } from 'lucide-react';
 
 const INITIAL_STUDENTS = [
@@ -57,9 +57,24 @@ export default function App() {
   const [filterCenter, setFilterCenter] = useState('سنتر النور - الأحد 6م');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Dropdown menu state & ref for action buttons
+  const [openMenu, setOpenMenu] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenu(null);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, []);
+
   // modals
   const [newStudent, setNewStudent] = useState({ name: '', grade: '3sec', center: 'سنتر النور - الأحد 6م', phone: '', parentPhone: '' });
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
 
   const [newSessionData, setNewSessionData] = useState({ title: '', grade: '3sec', center: 'سنتر النور - الأحد 6م', maxExamScore: 20, sheetName: '', homeworkName: '' });
   const [showAddSessionModal, setShowAddSessionModal] = useState(false);
@@ -87,9 +102,16 @@ export default function App() {
     alert(`تم حفظ الطالب بنجاح! الكود الخاص به: ${created.id}`);
   };
 
+  const handleSaveEdit = (e) => {
+    e.preventDefault();
+    setStudents(students.map(s => s.id === editingStudent.id ? editingStudent : s));
+    setEditingStudent(null);
+  };
+
   const handleDeleteStudent = (id) => {
     if (confirm('هل أنت متأكد من حذف هذا الطالب نهائياً؟')) {
       setStudents(students.filter(s => s.id !== id));
+      setOpenMenu(null);
     }
   };
 
@@ -145,6 +167,7 @@ export default function App() {
 شكرًا لمتابعتكم معنا! 🙏`;
 
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    setOpenMenu(null);
   };
 
   const handlePortalLogin = (e) => {
@@ -322,7 +345,7 @@ export default function App() {
                         <th className="p-4">تسجيل الحضور</th>
                         <th className="p-4">درجة الامتحان</th>
                         <th className="p-4">الواجب</th>
-                        <th className="p-4">إرسال واتساب لولي الأمر</th>
+                        <th className="p-4 text-center">الإجراءات (...)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700/60">
@@ -389,14 +412,48 @@ export default function App() {
                                   <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600 relative"></div>
                                 </label>
                               </td>
-                              <td className="p-4">
-                                <button
-                                  onClick={() => sendWhatsappToParent(student)}
-                                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow"
-                                >
-                                  <Send className="w-3.5 h-3.5" />
-                                  <span>واتساب</span>
-                                </button>
+                              <td className="p-4 text-center relative">
+                                <div className="relative inline-block" ref={openMenu === student.id ? menuRef : null}>
+                                  <button
+                                    type="button"
+                                    className="p-2 hover:bg-slate-700/60 rounded-xl text-slate-300 transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenu(openMenu === student.id ? null : student.id);
+                                    }}
+                                  >
+                                    <MoreHorizontal className="w-5 h-5" />
+                                  </button>
+
+                                  {openMenu === student.id && (
+                                    <div className="absolute left-0 mt-2 w-48 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden text-right py-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => { setOpenMenu(null); setEditingStudent(student); }}
+                                        className="w-full text-right px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 transition-colors flex items-center justify-between"
+                                      >
+                                        <span>تعديل البيانات</span>
+                                        <Edit3 className="w-3.5 h-3.5 text-blue-400" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => sendWhatsappToParent(student)}
+                                        className="w-full text-right px-4 py-2.5 text-xs text-emerald-400 hover:bg-emerald-500/10 transition-colors flex items-center justify-between"
+                                      >
+                                        <span>إرسال واتساب</span>
+                                        <Send className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteStudent(student.id)}
+                                        className="w-full text-right px-4 py-2.5 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors flex items-center justify-between"
+                                      >
+                                        <span>حذف الطالب</span>
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -415,7 +472,7 @@ export default function App() {
               <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-800 p-4 rounded-2xl border border-slate-700">
                 <div>
                   <h2 className="text-base font-bold text-white">إدارة دليل الطلاب المركزية</h2>
-                  <p className="text-xs text-slate-400">إضافة، حذف، وتغيير بيانت وأرقام أولياء الأمور</p>
+                  <p className="text-xs text-slate-400">إضافة، حذف، وتغيير بيانات وأرقام أولياء الأمور</p>
                 </div>
                 <button
                   onClick={() => setShowAddStudentModal(true)}
@@ -435,7 +492,49 @@ export default function App() {
                         <h3 className="text-base font-bold text-white mt-1">{student.name}</h3>
                         <p className="text-xs text-slate-400">{student.center}</p>
                       </div>
-                      <span className="text-amber-400 font-bold text-xs bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">⭐ {student.points}</span>
+                      
+                      {/* Dropdown in student cards */}
+                      <div className="relative" ref={openMenu === student.id ? menuRef : null}>
+                        <button
+                          type="button"
+                          className="p-1.5 hover:bg-slate-700/60 rounded-xl text-slate-300 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenu(openMenu === student.id ? null : student.id);
+                          }}
+                        >
+                          <MoreHorizontal className="w-5 h-5" />
+                        </button>
+
+                        {openMenu === student.id && (
+                          <div className="absolute left-0 mt-2 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden text-right py-1">
+                            <button
+                              type="button"
+                              onClick={() => { setOpenMenu(null); setEditingStudent(student); }}
+                              className="w-full text-right px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center justify-between"
+                            >
+                              <span>تعديل البيانات</span>
+                              <Edit3 className="w-3.5 h-3.5 text-blue-400" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => sendWhatsappToParent(student)}
+                              className="w-full text-right px-4 py-2 text-xs text-emerald-400 hover:bg-emerald-500/10 flex items-center justify-between"
+                            >
+                              <span>رسالة واتساب</span>
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteStudent(student.id)}
+                              className="w-full text-right px-4 py-2 text-xs text-rose-400 hover:bg-rose-500/10 flex items-center justify-between"
+                            >
+                              <span>حذف الطالب</span>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="text-xs space-y-1 text-slate-300 pt-2 border-t border-slate-700">
@@ -444,20 +543,13 @@ export default function App() {
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-slate-700">
-                      <button
-                        onClick={() => handleDeleteStudent(student.id)}
-                        className="text-rose-400 hover:text-rose-300 text-xs font-semibold flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        حذف الطالب
-                      </button>
-
+                      <span className="text-amber-400 font-bold text-xs bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">⭐ {student.points} نقطة</span>
                       <button
                         onClick={() => sendWhatsappToParent(student)}
                         className="text-emerald-400 hover:text-emerald-300 text-xs font-semibold flex items-center gap-1"
                       >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        رسالة ولي الأمر
+                        <Send className="w-3.5 h-3.5" />
+                        مراسلة ولي الأمر
                       </button>
                     </div>
                   </div>
@@ -709,6 +801,65 @@ export default function App() {
                   className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl"
                 >
                   حفظ الطالب
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT STUDENT */}
+      {editingStudent && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-white">تعديل بيانات الطالب</h3>
+            <form onSubmit={handleSaveEdit} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-300 block mb-1 font-semibold">اسم الطالب:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingStudent.name}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1 font-semibold">المجموعة والسنتر:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingStudent.center}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, center: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 block mb-1 font-semibold">رقم ولي الأمر:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingStudent.parentPhone}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, parentPhone: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 outline-none font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingStudent(null)}
+                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl"
+                >
+                  حفظ التعديلات
                 </button>
               </div>
             </form>
