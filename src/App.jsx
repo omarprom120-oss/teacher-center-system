@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Award, BookOpen, Check, CheckCircle2, ChevronDown, ClipboardList, Download,
   FileText, Filter, LayoutDashboard, Lock, MessageCircle, MoreHorizontal,
@@ -22,8 +22,17 @@ function useStored(key, fallback) {
 }
 
 export default function App() {
-  const [mode, setMode] = useState('admin')
+  const [mode, setMode] = useState(() => window.location.pathname.startsWith('/student') ? 'student' : 'admin')
   const [tab, setTab] = useState('attendance')
+  useEffect(() => {
+    const syncRoute = () => setMode(window.location.pathname.startsWith('/student') ? 'student' : 'admin')
+    window.addEventListener('popstate', syncRoute)
+    return () => window.removeEventListener('popstate', syncRoute)
+  }, [])
+  const navigate = (path) => {
+    window.history.pushState({}, '', path)
+    setMode(path.startsWith('/student') ? 'student' : 'admin')
+  }
   const [students, setStudents] = useStored('mm-students', seedStudents)
   const [sessions, setSessions] = useStored('mm-sessions', seedSessions)
   const [sessionId, setSessionId] = useState(seedSessions[0].id)
@@ -52,7 +61,7 @@ export default function App() {
   const login = (e) => { e.preventDefault(); setPortalStudent(students.find((s) => s.id.toLowerCase() === portalInput.trim().toLowerCase() || s.phone === portalInput.trim() || s.parentPhone === portalInput.trim()) || null) }
 
   return <div className="app-shell" dir="rtl">
-    <header className="topbar"><div className="brand"><div className="brand-mark"><BookOpen /></div><div><h1>Mr. Mohammed Marc</h1><p>English Department <span>•</span> Teacher Center OS</p></div></div><div className="mode-switch"><button className={mode === 'admin' ? 'active' : ''} onClick={() => setMode('admin')}><LayoutDashboard /> لوحة التحكم</button><button className={mode === 'student' ? 'active student' : ''} onClick={() => setMode('student')}><Lock /> بوابة الطالب</button></div><div className="top-actions"><span className="live-dot">مباشر</span><button className="icon-btn"><Settings2 /></button></div></header>
+    <header className="topbar"><div className="brand"><div className="brand-mark"><BookOpen /></div><div><h1>Mr. Mohammed Marc</h1><p>English Department <span>•</span> Teacher Center OS</p></div></div><div className="mode-switch"><button className={mode === 'admin' ? 'active' : ''} onClick={() => navigate('/admin')}><LayoutDashboard /> لوحة التحكم</button><button className={mode === 'student' ? 'active student' : ''} onClick={() => navigate('/student')}><Lock /> بوابة الطالب</button></div><div className="top-actions"><span className="live-dot">مباشر</span><button className="icon-btn"><Settings2 /></button></div></header>
     {mode === 'admin' ? <main className="page"><section className="hero"><div><div className="eyebrow"><Sparkles /> مساحة المدرس</div><h2>أهلاً يا مستر محمد،<br /><em>خلّي كل طالب في الصورة.</em></h2><p>إدارة الحضور، الحصص، والطلاب من مكان واحد.</p></div><div className="hero-stats"><div><strong>{students.length}</strong><span>إجمالي الطلاب</span></div><div><strong>{sessions.length}</strong><span>حصص نشطة</span></div><div><strong>92%</strong><span>متوسط الحضور</span></div></div></section>
       <nav className="tabs">{[['attendance', ClipboardList, 'الحضور اليومي'], ['students', Users, 'دليل الطلاب'], ['sessions', FileText, 'الحصص والشيتات'], ['leaderboard', Award, 'لوحة الأوائل']].map(([key, Icon, label]) => <button key={key} className={tab === key ? 'selected' : ''} onClick={() => setTab(key)}><Icon />{label}<span>{key === 'students' ? students.length : key === 'sessions' ? sessions.length : ''}</span></button>)}</nav>
       {tab === 'attendance' && <><section className="toolbar"><div className="control"><label>الحصة المفعلة</label><select value={sessionId} onChange={(e) => setSessionId(e.target.value)}>{sessions.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}</select></div><div className="control"><label>الصف الدراسي</label><select value={grade} onChange={(e) => setGrade(e.target.value)}><option value="1sec">أولى ثانوي</option><option value="2sec">تانية ثانوي</option><option value="3sec">تالتة ثانوي</option></select></div><div className="search"><Search /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث بالاسم أو الكود..." /></div><button className="primary" onClick={() => setShowSession(true)}><Plus /> حصة جديدة</button><button className="secondary" onClick={() => setShowStudent(true)}><UserPlus /> طالب جديد</button></section><section className="session-banner"><div><span className="badge blue">{current.center} · {gradeLabels[current.grade]}</span><h3>{current.title}</h3><p>{current.date} <i /> الدرجة الكلية: <b>{current.max}</b></p></div><div className="files"><span><FileText /> {current.sheet || 'لا يوجد شيت'}</span><span><ClipboardList /> {current.homework || 'لا يوجد واجب'}</span></div></section><section className="table-card"><div className="table-head"><div><h3>تسجيل الحضور والدرجات</h3><p>{filtered.length} طلاب في هذه المجموعة</p></div><div className="legend"><span><i className="green" /> حاضر</span><span><i className="yellow" /> متأخر</span><span><i className="red" /> غائب</span></div></div><div className="table-wrap"><table><thead><tr><th>الطالب</th><th>الحضور</th><th>الاختبار <small>/ {current.max}</small></th><th>الواجب</th><th>تواصل</th><th /></tr></thead><tbody>{filtered.map((student) => { const record = recordFor(student.id); return <tr key={student.id}><td><div className="student-cell"><div className="avatar">{student.name.slice(0, 1)}</div><div><strong>{student.name}</strong><small>{student.id} · {student.center}</small></div></div></td><td><div className="status-pills">{['present', 'late', 'absent'].map((status) => <button key={status} className={record.status === status ? status : ''} onClick={() => updateRecord(student.id, { status })}>{statusLabels[status]}</button>)}</div></td><td><div className="score"><input type="number" min="0" max={current.max} value={record.score} onChange={(e) => updateRecord(student.id, { score: Number(e.target.value) })} /><span>/ {current.max}</span></div></td><td><button className={`homework ${record.homework ? 'done' : ''}`} onClick={() => updateRecord(student.id, { homework: !record.homework })}>{record.homework ? <Check /> : <XCircle />}{record.homework ? 'تم التسليم' : 'لم يسلم'}</button></td><td><button className="wa" onClick={() => whatsapp(student)}><MessageCircle /> واتساب</button></td><td><button className="more"><MoreHorizontal /></button></td></tr>})}</tbody></table></div></section></>}
