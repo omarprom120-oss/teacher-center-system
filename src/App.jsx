@@ -5,51 +5,75 @@ import {
   PlayCircle, Plus, Search, Settings2, Sparkles, Trash2, UserPlus, Users, XCircle,
 } from 'lucide-react'
 
-const seedStudents = [
+// 🔑 بيانات سوبابيز الخاصة بك للمزامنة السحابية الفورية
+const SUPABASE_URL = 'https://mmgitoaoolcodpvwqvzq.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_xSHOop6CGqgyaasZ3mK5hA_0HXv98kO'
+
+const initialStudents = [
   { id: 'MM-1001', name: 'أحمد محمد علي', grade: '3sec', center: 'النور', phone: '01012345678', parentPhone: '01098765432', points: 155 },
   { id: 'MM-1002', name: 'محمود أحمد حسن', grade: '3sec', center: 'النور', phone: '01123456789', parentPhone: '01187654321', points: 120 },
   { id: 'MM-1003', name: 'مريم محمود إبراهيم', grade: '2sec', center: 'التفوق', phone: '01234567890', parentPhone: '01276543210', points: 180 },
   { id: 'MM-1004', name: 'يوسف خالد سمير', grade: '1sec', center: 'الصفوة', phone: '01555555555', parentPhone: '01544444444', points: 95 },
   { id: 'MM-1005', name: 'عمر محمد', grade: '3sec', center: 'النور', phone: '01097223288', parentPhone: '01097223288', points: 200 },
 ]
-const seedSessions = [{ id: 'S-101', title: 'الباب الأول: شرح القوانين والمسائل', grade: '3sec', center: 'النور', date: '28 أكتوبر 2026', max: 20, sheet: 'ملخص الباب الأول.pdf', homework: 'حل تدريبات كتاب الامتحان ص 15–20', records: { 'MM-1001': { status: 'present', score: 19, homework: true }, 'MM-1002': { status: 'late', score: 14, homework: false } } }]
+
+const initialSessions = [{ id: 'S-101', title: 'الباب الأول: شرح القوانين والمسائل', grade: '3sec', center: 'النور', date: '28 أكتوبر 2026', max: 20, sheet: 'ملخص الباب الأول.pdf', homework: 'حل تدريبات كتاب الامتحان ص 15–20', records: { 'MM-1001': { status: 'present', score: 19, homework: true }, 'MM-1002': { status: 'late', score: 14, homework: false } } }]
 const gradeLabels = { '1sec': 'أولى ثانوي', '2sec': 'تانية ثانوي', '3sec': 'تالتة ثانوي' }
 const statusLabels = { present: 'حاضر', late: 'متأخر', absent: 'غائب' }
 
-function useStored(key, fallback) {
-  const [value, setValue] = useState(() => {
-    try {
-      const stored = localStorage.getItem(key)
-      if (stored !== null) {
-        return JSON.parse(stored)
-      }
-      return fallback
-    } catch {
-      return fallback
+// هوك مزامن مع سوبابيز سحابياً لتحديث البيانات على كل الأجهزة فوراً
+function useSupabaseState(key, fallback) {
+  const [value, setValue] = useState(fallback)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    if (!SUPABASE_URL.includes('http')) {
+      setLoaded(true)
+      return
     }
-  })
+    fetch(`${SUPABASE_URL}/rest/v1/kv_store?key=eq.${key}`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.length > 0 && data[0].value !== undefined) {
+          setValue(data[0].value)
+        }
+        setLoaded(true)
+      })
+      .catch(() => setLoaded(true))
+  }, [key])
 
   const update = (nextValue) => {
-    setValue((currentValue) => {
-      const resolvedValue = typeof nextValue === 'function' ? nextValue(currentValue) : nextValue
-      try {
-        localStorage.setItem(key, JSON.stringify(resolvedValue))
-      } catch {
-        // Fallback
-      }
-      return resolvedValue
-    })
+    const resolved = typeof nextValue === 'function' ? nextValue(value) : nextValue
+    setValue(resolved)
+
+    if (SUPABASE_URL.includes('http')) {
+      fetch(`${SUPABASE_URL}/rest/v1/kv_store`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({ key, value: resolved })
+      }).catch(err => console.error('Sync error:', err))
+    }
   }
 
-  return [value, update]
+  return [value, update, loaded]
 }
 
 export default function App() {
   const getModeFromHash = () => window.location.hash.toLowerCase() === '#/admin' ? 'admin' : 'student'
   const [mode, setMode] = useState(getModeFromHash)
   const [tab, setTab] = useState('attendance')
-  const [isDarkMode, setIsDarkMode] = useStored('MM-theme-dark', true)
-  const [announcements, setAnnouncements] = useStored('MM-announcements', [{ id: 'A-1', title: 'مراجعة شاملة قبل الامتحان', body: 'مراجعة الباب الأول يوم السبت القادم في سنتر النور.', type: 'مراجعة' }])
+  const [isDarkMode, setIsDarkMode] = useStoredTheme('MM-theme-dark', true)
+  const [announcements, setAnnouncements] = useSupabaseState('mm-announcements', [{ id: 'A-1', title: 'مراجعة شاملة قبل الامتحان', body: 'مراجعة الباب الأول يوم السبت القادم في سنتر النور.', type: 'مراجعة' }])
 
   const [openMenu, setOpenMenu] = useState(null)
   const menuRef = useRef(null)
@@ -73,16 +97,29 @@ export default function App() {
     return () => window.removeEventListener('hashchange', syncRoute)
   }, [])
 
+  function useStoredTheme(key, fallback) {
+    const [val, setVal] = useState(() => {
+      try { const s = localStorage.getItem(key); return s !== null ? JSON.parse(s) : fallback } catch { return fallback }
+    })
+    const updateVal = (v) => {
+      const next = typeof v === 'function' ? v(val) : v
+      setVal(next)
+      try { localStorage.setItem(key, JSON.stringify(next)) } catch {}
+    }
+    return [val, updateVal]
+  }
+
   const toggleTheme = () => setIsDarkMode((prev) => !prev)
 
-  const [students, setStudents] = useStored('mm-students', seedStudents)
-  const [sessions, setSessions] = useStored('mm-sessions', seedSessions)
-  const [schedule, setSchedule] = useStored('mm-schedule', [
+  const [students, setStudents] = useSupabaseState('mm-students', initialStudents)
+  const [sessions, setSessions] = useSupabaseState('mm-sessions', initialSessions)
+  const [schedule, setSchedule] = useSupabaseState('mm-schedule', [
     { id: 'T-1', day: 'السبت', center: 'النور', grade: '3sec', subject: 'English', time: '05:00 م' },
     { id: 'T-2', day: 'الأحد', center: 'الأمل', grade: '2sec', subject: 'English', time: '07:00 م' },
     { id: 'T-3', day: 'الثلاثاء', center: 'النور', grade: '1sec', subject: 'English', time: '05:00 م' },
   ])
-  const [sessionId, setSessionId] = useState(seedSessions[0].id)
+
+  const [sessionId, setSessionId] = useState(initialSessions[0].id)
   const [grade, setGrade] = useState('3sec')
   const [query, setQuery] = useState('')
   const [showStudent, setShowStudent] = useState(false)
@@ -108,7 +145,9 @@ export default function App() {
     const nextRecord = { ...old, ...patch }
     const nextRecords = { ...(current.records || {}), [id]: nextRecord }
     setSessions(sessions.map((s) => s.id === current.id ? { ...s, records: nextRecords } : s))
-    if (patch.status && patch.status !== old.status) setStudents(students.map((s) => s.id === id ? { ...s, points: Math.max(0, s.points + (patch.status === 'present' ? 10 : patch.status === 'late' ? 5 : 0) - (old.status === 'present' ? 10 : old.status === 'late' ? 5 : 0)) } : s))
+    if (patch.status && patch.status !== old.status) {
+      setStudents(students.map((s) => s.id === id ? { ...s, points: Math.max(0, s.points + (patch.status === 'present' ? 10 : patch.status === 'late' ? 5 : 0) - (old.status === 'present' ? 10 : old.status === 'late' ? 5 : 0)) } : s))
+    }
   }
 
   const addStudent = (e) => { 
@@ -122,8 +161,22 @@ export default function App() {
     window.alert(`تم تسجيل الطالب بنجاح! كود الطالب هو: ${newId}`);
   }
 
-  const addSession = (e) => { e.preventDefault(); if (!sessionForm.title) return; const item = { ...sessionForm, id: `S-${Date.now()}`, date: new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }), max: Number(sessionForm.max) || 20, records: {} }; setSessions([item, ...sessions]); setSessionId(item.id); setSessionForm({ title: '', grade: '3sec', center: 'النور', sheet: '', homework: '', video: '', max: 20 }); setShowSession(false) }
-  const addAnnouncement = (e) => { e.preventDefault(); if (!announcementForm.title || !announcementForm.body) return; setAnnouncements([{ ...announcementForm, id: `A-${Date.now()}` }, ...announcements]); setAnnouncementForm({ title: '', body: '', type: 'تنبيه' }) }
+  const addSession = (e) => { 
+    e.preventDefault(); 
+    if (!sessionForm.title) return; 
+    const item = { ...sessionForm, id: `S-${Date.now()}`, date: new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }), max: Number(sessionForm.max) || 20, records: {} }; 
+    setSessions([item, ...sessions]); 
+    setSessionId(item.id); 
+    setSessionForm({ title: '', grade: '3sec', center: 'النور', sheet: '', homework: '', video: '', max: 20 }); 
+    setShowSession(false) 
+  }
+
+  const addAnnouncement = (e) => { 
+    e.preventDefault(); 
+    if (!announcementForm.title || !announcementForm.body) return; 
+    setAnnouncements([{ ...announcementForm, id: `A-${Date.now()}` }, ...announcements]); 
+    setAnnouncementForm({ title: '', body: '', type: 'تنبيه' }) 
+  }
 
   const saveSchedule = (e) => {
     e.preventDefault()
@@ -193,7 +246,7 @@ export default function App() {
           <button className="icon-btn theme-toggle" onClick={toggleTheme} title="تغيير الثيم">
             {isDarkMode ? <Sun className="icon-sun" /> : <Moon className="icon-moon" />}
           </button>
-          <span className="live-dot">مباشر</span>
+          <span className="live-dot">مباشر سحابي</span>
         </div>
       </header>
 
@@ -207,8 +260,8 @@ export default function App() {
           <section className="hero">
             <div>
               <div className="eyebrow"><Sparkles /> مساحة المدرس</div>
-              <h2>أهلاً يا مستر محمد،<br /><em>خلّي كل طالب في الصورة.</em></h2>
-              <p>إدارة الحضور، الحصص، والطلاب من مكان واحد.</p>
+              <h2>أهلاً يا مستر محمد،<br /><em>كل أجهزتك متحدثة أونلاين.</em></h2>
+              <p>إدارة الحضور، الحصص، والطلاب متزامنة تماماً.</p>
             </div>
             <div className="hero-stats">
               <div><strong>{students.length}</strong><span>إجمالي الطلاب</span></div>
