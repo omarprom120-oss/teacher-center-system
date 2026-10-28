@@ -10,6 +10,7 @@ const seedStudents = [
   { id: 'MM-1002', name: 'محمود أحمد حسن', grade: '3sec', center: 'النور', phone: '01123456789', parentPhone: '01187654321', points: 120 },
   { id: 'MM-1003', name: 'مريم محمود إبراهيم', grade: '2sec', center: 'التفوق', phone: '01234567890', parentPhone: '01276543210', points: 180 },
   { id: 'MM-1004', name: 'يوسف خالد سمير', grade: '1sec', center: 'الصفوة', phone: '01555555555', parentPhone: '01544444444', points: 95 },
+  { id: 'MM-1005', name: 'عمر محمد', grade: '3sec', center: 'النور', phone: '01097223288', parentPhone: '01097223288', points: 200 },
 ]
 const seedSessions = [{ id: 'S-101', title: 'الباب الأول: شرح القوانين والمسائل', grade: '3sec', center: 'النور', date: '28 أكتوبر 2026', max: 20, sheet: 'ملخص الباب الأول.pdf', homework: 'حل تدريبات كتاب الامتحان ص 15–20', records: { 'MM-1001': { status: 'present', score: 19, homework: true }, 'MM-1002': { status: 'late', score: 14, homework: false } } }]
 const gradeLabels = { '1sec': 'أولى ثانوي', '2sec': 'تانية ثانوي', '3sec': 'تالتة ثانوي' }
@@ -19,7 +20,19 @@ function useStored(key, fallback) {
   const [value, setValue] = useState(() => {
     try {
       const stored = localStorage.getItem(key)
-      return stored ? JSON.parse(stored) : fallback
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        // دمج البيانات الأساسية مع المخزنة لضمان عدم ضياع الطلاب الجدد
+        if (Array.isArray(fallback) && Array.isArray(parsed)) {
+          const merged = [...parsed]
+          fallback.forEach(item => {
+            if (!merged.some(m => m.id === item.id)) merged.push(item)
+          })
+          return merged
+        }
+        return parsed
+      }
+      return fallback
     } catch {
       return fallback
     }
@@ -31,7 +44,7 @@ function useStored(key, fallback) {
       try {
         localStorage.setItem(key, JSON.stringify(resolvedValue))
       } catch {
-        // Keep in-memory update working
+        // Fallback
       }
       return resolvedValue
     })
@@ -47,7 +60,6 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useStored('MM-theme-dark', true)
   const [announcements, setAnnouncements] = useStored('MM-announcements', [{ id: 'A-1', title: 'مراجعة شاملة قبل الامتحان', body: 'مراجعة الباب الأول يوم السبت القادم في سنتر النور.', type: 'مراجعة' }])
 
-  // Menu State & Ref for dropdowns
   const [openMenu, setOpenMenu] = useState(null)
   const menuRef = useRef(null)
 
@@ -108,7 +120,17 @@ export default function App() {
     if (patch.status && patch.status !== old.status) setStudents(students.map((s) => s.id === id ? { ...s, points: Math.max(0, s.points + (patch.status === 'present' ? 10 : patch.status === 'late' ? 5 : 0) - (old.status === 'present' ? 10 : old.status === 'late' ? 5 : 0)) } : s))
   }
 
-  const addStudent = (e) => { e.preventDefault(); if (!studentForm.name || !studentForm.parentPhone) return; setStudents([{ ...studentForm, id: `MM-${1000 + students.length + 1}`, points: 50 }, ...students]); setStudentForm({ name: '', phone: '', parentPhone: '', grade: '3sec', center: 'النور' }); setShowStudent(false) }
+  const addStudent = (e) => { 
+    e.preventDefault(); 
+    if (!studentForm.name || !studentForm.parentPhone) return; 
+    const newId = `MM-${1000 + students.length + 1}`;
+    const newItem = { ...studentForm, id: newId, points: 50 };
+    setStudents([newItem, ...students]); 
+    setStudentForm({ name: '', phone: '', parentPhone: '', grade: '3sec', center: 'النور' }); 
+    setShowStudent(false);
+    window.alert(`تم تسجيل الطالب بنجاح! كود الطالب هو: ${newId}`);
+  }
+
   const addSession = (e) => { e.preventDefault(); if (!sessionForm.title) return; const item = { ...sessionForm, id: `S-${Date.now()}`, date: new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }), max: Number(sessionForm.max) || 20, records: {} }; setSessions([item, ...sessions]); setSessionId(item.id); setSessionForm({ title: '', grade: '3sec', center: 'النور', sheet: '', homework: '', video: '', max: 20 }); setShowSession(false) }
   const addAnnouncement = (e) => { e.preventDefault(); if (!announcementForm.title || !announcementForm.body) return; setAnnouncements([{ ...announcementForm, id: `A-${Date.now()}` }, ...announcements]); setAnnouncementForm({ title: '', body: '', type: 'تنبيه' }) }
 
@@ -146,17 +168,39 @@ export default function App() {
 
   const login = (e) => {
     e.preventDefault()
-    const value = portalInput.trim()
+    const value = portalInput.trim().toLowerCase()
     const normalizedPhone = value.replace(/[^0-9]/g, '')
-    const found = value ? students.find((s) => s.id.toLowerCase() === value.toLowerCase() || String(s.phone || '').replace(/[^0-9]/g, '') === normalizedPhone || String(s.parentPhone || '').replace(/[^0-9]/g, '') === normalizedPhone) : null
-    setPortalStudent(found || null)
-    setPortalError(found ? '' : '❌ خطأ: هذا الرقم أو الكود غير مسجل في النظام، تأكد من البيانات أو تواصل مع الدعم.')
+    
+    const found = students.find((s) => {
+      const sId = String(s.id || '').trim().toLowerCase()
+      const sPhone = String(s.phone || '').replace(/[^0-9]/g, '')
+      const sParent = String(s.parentPhone || '').replace(/[^0-9]/g, '')
+      return sId === value || (normalizedPhone && (sPhone === normalizedPhone || sParent === normalizedPhone))
+    })
+
+    if (found) {
+      setPortalStudent(found)
+      setPortalError('')
+    } else {
+      setPortalStudent(null)
+      setPortalError('❌ خطأ: هذا الرقم أو الكود غير مسجل في النظام، تأكد من البيانات أو تواصل مع مستر محمد.')
+    }
+  }
+
+  const navigateToPortal = () => {
+    window.location.hash = '#/student'
+    setMode('student')
+  }
+
+  const navigateToAdmin = () => {
+    window.location.hash = '#/admin'
+    setMode('admin')
   }
 
   return (
     <div className={`app-shell ${isDarkMode ? 'dark-mode' : 'light-mode'}`} dir="rtl">
       <header className="topbar">
-        <div className="brand">
+        <div className="brand" onClick={navigateToAdmin} style={{ cursor: 'pointer' }}>
           <div className="brand-mark"><BookOpen /></div>
           <div>
             <h1>Mr. Mohammed Marc</h1>
@@ -164,7 +208,13 @@ export default function App() {
           </div>
         </div>
         <div className="route-label">
-          <span className="route-pill">{mode === 'admin' ? 'مساحة المدرس' : 'بوابة الطالب'}</span>
+          <button 
+            className="route-pill-btn" 
+            onClick={() => mode === 'admin' ? navigateToPortal() : navigateToAdmin()}
+            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <span className="route-pill">{mode === 'admin' ? '📄 الانتقال لبوابة الطالب' : '👨‍🏫 الانتقال لمساحة المدرس'}</span>
+          </button>
         </div>
         <div className="top-actions">
           <button className="icon-btn theme-toggle" onClick={toggleTheme} title="تغيير الثيم">
@@ -376,6 +426,7 @@ export default function App() {
           sessions={sessions}
           schedule={schedule}
           announcements={announcements}
+          onLogout={() => { setPortalStudent(null); setPortalInput('') }}
         />
       )}
 
@@ -394,6 +445,7 @@ export default function App() {
                   required={key !== 'phone'}
                   value={studentForm[key]}
                   onChange={(e) => setStudentForm({ ...studentForm, [key]: e.target.value })}
+                  placeholder={key === 'name' ? 'مثال: محمد أحمد' : '010xxxxxxxx'}
                 />
               </label>
             ))}
@@ -407,7 +459,7 @@ export default function App() {
             <label>السنتر
               <input className="dark-styled-input" value={studentForm.center} onChange={(e) => setStudentForm({ ...studentForm, center: e.target.value })} />
             </label>
-            <button className="primary full" type="submit">حفظ الطالب</button>
+            <button className="primary full" type="submit">حفظ الطالب وتوليد الكود</button>
           </form>
         </Modal>
       )}
@@ -521,7 +573,7 @@ function Directory({ students, onDelete, onEdit, onAdd, openMenu, setOpenMenu, m
   const sendWhatsApp = (student) => {
     const phone = String(student.parentPhone || '').replace(/[^0-9]/g, '')
     if (!phone) return
-    const message = `السلام عليكم ولي أمر الطالب/ة ${student.name}، هذا تقرير مختصر عن متابعة الطالب في مركز مستر محمد مارك.`
+    const message = `السلام عليكم ولي أمر الطالب/ة ${student.name} (كود الطالب: ${student.id})، هذا تقرير مختصر عن متابعة الطالب في مركز مستر محمد مارك.`
     window.open(`https://wa.me/${phone.startsWith('20') ? phone : `20${phone.replace(/^0/, '')}`}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -531,7 +583,7 @@ function Directory({ students, onDelete, onEdit, onAdd, openMenu, setOpenMenu, m
         <div>
           <div className="eyebrow"><Users /> قاعدة البيانات</div>
           <h2>دليل الطلاب</h2>
-          <p>كل ملفات طلابك في مكان واحد.</p>
+          <p>كل ملفات طلابك في مكان واحد مع الكود الخاص بكل طالب.</p>
         </div>
         <button className="primary" onClick={onAdd}><UserPlus /> تسجيل طالب</button>
       </div>
@@ -555,14 +607,13 @@ function Directory({ students, onDelete, onEdit, onAdd, openMenu, setOpenMenu, m
                   <div className="action-popover" role="menu" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                     <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); onEdit(s) }}>تعديل البيانات</button>
                     <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); sendWhatsApp(s) }}>إرسال واتساب</button>
-                    <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); window.alert(`تقرير الطالب: ${s.name}`) }}>عرض التقرير</button>
                     <button type="button" role="menuitem" className="delete-action" onClick={() => { setOpenMenu(null); onDelete(s.id) }}>حذف الطالب</button>
                   </div>
                 )}
               </div>
             </div>
             <h3>{s.name}</h3>
-            <p>{s.id} · {gradeLabels[s.grade]}</p>
+            <p><b>الكود: {s.id}</b> · {gradeLabels[s.grade]}</p>
             <div className="card-meta">
               <span>{s.center}</span>
               <b><Award /> {s.points}</b>
@@ -717,35 +768,43 @@ function Leaderboard({ students }) {
   )
 }
 
-function StudentPortal({ input, setInput, login, student, error, sessions, schedule, announcements }) {
+function StudentPortal({ input, setInput, login, student, error, sessions, schedule, announcements, onLogout }) {
   return (
-    <main className="portal page">
+    <main className="portal page portal-mobile-fix">
       <div className="portal-glow" />
-      <section className="portal-hero">
-        <div className="brand-mark"><BookOpen /></div>
-        <div className="eyebrow"><Sparkles /> بوابة الطالب</div>
-        <h2>كل تقدّمك،<br /><em>في مكان واحد.</em></h2>
-        <p>تابع حضورك ودرجاتك وملفات الحصص مع Mr. Mohammed Marc.</p>
-      </section>
-
+      
       {!student ? (
-        <form className="login-card" onSubmit={login}>
-          <div className="login-icon"><Lock /></div>
-          <h3>دخول الطالب</h3>
-          <p>اكتب الكود الخاص بك أو رقم الهاتف للوصول إلى ملفك.</p>
-          {error && <div className="login-error" role="alert">{error}</div>}
-          <label>الكود أو رقم الهاتف
-            <input className="dark-styled-input" autoFocus value={input} onChange={(e) => setInput(e.target.value)} placeholder="MM-1001" />
-          </label>
-          <button className="primary full">دخول إلى ملفي <ChevronDown /></button>
-          <small>للتجربة: MM-1001</small>
-        </form>
+        <div className="portal-login-wrapper">
+          <section className="portal-hero">
+            <div className="brand-mark"><BookOpen /></div>
+            <div className="eyebrow"><Sparkles /> بوابة الطالب</div>
+            <h2>كل تقدّمك،<br /><em>في مكان واحد.</em></h2>
+            <p>تابع حضورك ودرجاتك وملفات الحصص مع Mr. Mohammed Marc.</p>
+          </section>
+
+          <form className="login-card" onSubmit={login}>
+            <div className="login-icon"><Lock /></div>
+            <h3>دخول الطالب</h3>
+            <p>اكتب الكود الخاص بك (مثل MM-1005) أو رقم الهاتف للوصول إلى ملفك.</p>
+            {error && <div className="login-error" role="alert">{error}</div>}
+            <label>الكود أو رقم الهاتف
+              <input className="dark-styled-input" autoFocus value={input} onChange={(e) => setInput(e.target.value)} placeholder="MM-1001 أو رقم الهاتف" />
+            </label>
+            <button className="primary full">دخول إلى ملفي <ChevronDown /></button>
+            <div className="portal-hints">
+              <small>للتجربة السريعة: استخدم الكود <b>MM-1001</b> أو <b>MM-1005</b></small>
+            </div>
+          </form>
+        </div>
       ) : (
-        <section className="profile-card">
+        <section className="profile-card mobile-full-profile">
+          <div className="profile-top-bar" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+            <span className="badge green">طالب نشط</span>
+            <button className="secondary" onClick={onLogout} style={{ padding: '4px 10px', fontSize: '11px' }}>تسجيل الخروج</button>
+          </div>
           <div className="profile-head">
             <div className="avatar huge">{student.name.slice(0, 1)}</div>
             <div>
-              <span className="badge green">طالب نشط</span>
               <h3>{student.name}</h3>
               <p>{student.id} · {gradeLabels[student.grade]} · سنتر {student.center}</p>
             </div>
@@ -779,7 +838,7 @@ function StudentPortal({ input, setInput, login, student, error, sessions, sched
               <h4><Bell /> الإشعارات</h4>
               {announcements.slice(0, 2).map((item) => (
                 <div key={item.id}>
-                  <strong>{item.title}</strong>
+                  <b>{item.title}</b>
                   <span>{item.body}</span>
                 </div>
               ))}
