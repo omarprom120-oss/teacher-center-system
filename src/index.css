@@ -212,28 +212,6 @@ td{padding:14px 20px;border-top:1px solid #1b2a3d;font-size:11px;color:#dbe4ef}
 .form-grid input,.form-grid select{width:100%}
 .form-grid .wide,.form-grid .full{grid-column:1/-1}
 
-@media(max-width:800px){
-  .topbar{height:auto;min-height:70px;flex-wrap:wrap;padding:13px 18px;gap:14px}
-  .brand{margin:0}
-  .top-actions{margin-right:auto}
-  .hero{display:block}
-  .hero-stats{margin-top:24px;gap:15px}
-  .hero-stats div{padding-right:15px}
-  .hero-stats strong{font-size:20px}
-  .session-banner{display:block}
-  .files{margin-top:18px}
-  .toolbar{align-items:stretch}
-  .search{margin:0;order:3;width:100%}
-  .search input{width:100%}
-  .portal{display:flex;flex-direction:column;align-items:stretch;gap:30px;padding-top:35px}
-  .portal-hero .brand-mark{margin-bottom:20px}
-  .portal-hero h2{font-size:38px}
-  .login-card,.profile-card{max-width:none}
-  .profile-head{align-items:flex-start;flex-wrap:wrap}
-  .points{margin-right:auto}
-  .legend{display:none}
-}
-
 .schedule-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .schedule-day{padding:16px;border:1px solid #203149;border-radius:18px;background:#0d1727}
 .schedule-day h3{margin:0 0 14px;color:#dce8f7}
@@ -242,7 +220,7 @@ td{padding:14px 20px;border-top:1px solid #1b2a3d;font-size:11px;color:#dbe4ef}
 .schedule-slot strong{font-size:12px}
 .schedule-slot.muted{opacity:.58;background:#111c2c;border-color:#26364a}
 
-/* تعديل أزرار التعديل والحذف داخل كاردات الجدول لإزالة الخلفية البايظة */
+/* أزرار التعديل والحذف داخل جدول الحصص */
 .schedule-actions {
   display: flex;
   gap: 8px;
@@ -288,6 +266,41 @@ td{padding:14px 20px;border-top:1px solid #1b2a3d;font-size:11px;color:#dbe4ef}
 .action-popover button{display:block;width:100%;padding:9px 10px;border-radius:7px;background:transparent;color:#dbe7f5;text-align:right;font-size:11px}
 .action-popover button:hover{background:#1c3048}
 .action-popover .delete-action{color:#ff8b9b}
+
+/* تحسينات الموبايل والتجاوب الشامل */
+@media(max-width:900px){
+  .schedule-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media(max-width:800px){
+  .topbar{height:auto;min-height:70px;flex-wrap:wrap;padding:13px 18px;gap:14px}
+  .brand{margin:0}
+  .top-actions{margin-right:auto}
+  .hero{display:block}
+  .hero-stats{margin-top:24px;gap:15px}
+  .hero-stats div{padding-right:15px}
+  .hero-stats strong{font-size:20px}
+  .session-banner{display:block}
+  .files{margin-top:18px}
+  .toolbar{align-items:stretch}
+  .search{margin:0;order:3;width:100%}
+  .search input{width:100%}
+  .portal{display:flex;flex-direction:column;align-items:stretch;gap:30px;padding-top:35px}
+  .portal-hero .brand-mark{margin-bottom:20px}
+  .portal-hero h2{font-size:38px}
+  .login-card,.profile-card{max-width:none}
+  .profile-head{align-items:flex-start;flex-wrap:wrap}
+  .points{margin-right:auto}
+  .legend{display:none}
+  .schedule-editor {
+    flex-direction: column !important;
+  }
+  .schedule-editor input, .schedule-editor select, .schedule-editor button {
+    width: 100% !important;
+  }
+}
 
 @media(max-width:500px){
   .page{padding:28px 14px 50px}
