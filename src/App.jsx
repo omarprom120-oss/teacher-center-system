@@ -22,7 +22,6 @@ function useStored(key, fallback) {
       const stored = localStorage.getItem(key)
       if (stored) {
         const parsed = JSON.parse(stored)
-        // دمج البيانات الأساسية مع المخزنة لضمان عدم ضياع الطلاب الجدد
         if (Array.isArray(fallback) && Array.isArray(parsed)) {
           const merged = [...parsed]
           fallback.forEach(item => {
@@ -187,35 +186,19 @@ export default function App() {
     }
   }
 
-  const navigateToPortal = () => {
-    window.location.hash = '#/student'
-    setMode('student')
-  }
-
-  const navigateToAdmin = () => {
-    window.location.hash = '#/admin'
-    setMode('admin')
-  }
-
   return (
     <div className={`app-shell ${isDarkMode ? 'dark-mode' : 'light-mode'}`} dir="rtl">
       <header className="topbar">
-        <div className="brand" onClick={navigateToAdmin} style={{ cursor: 'pointer' }}>
+        <div className="brand">
           <div className="brand-mark"><BookOpen /></div>
           <div>
             <h1>Mr. Mohammed Marc</h1>
             <p>English Department <span>❖❖❖</span> Teacher Center OS</p>
           </div>
         </div>
-        <div className="route-label">
-          <button 
-            className="route-pill-btn" 
-            onClick={() => mode === 'admin' ? navigateToPortal() : navigateToAdmin()}
-            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            <span className="route-pill">{mode === 'admin' ? '📄 الانتقال لبوابة الطالب' : '👨‍🏫 الانتقال لمساحة المدرس'}</span>
-          </button>
-        </div>
+        
+        {/* تم حذف زر الانتقال لمساحة المدرس نهائياً من هنا لكي لا يظهر لأي طالب */}
+        
         <div className="top-actions">
           <button className="icon-btn theme-toggle" onClick={toggleTheme} title="تغيير الثيم">
             {isDarkMode ? <Sun className="icon-sun" /> : <Moon className="icon-moon" />}
@@ -874,7 +857,7 @@ function Modal({ title, onClose, children }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3>{title}</h3>
-          <button onClick={onClose}>×</button>
+          <button onClick= {onClose}>×</button>
         </div>
         {children}
       </div>
