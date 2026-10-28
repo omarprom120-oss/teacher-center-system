@@ -20,16 +20,8 @@ function useStored(key, fallback) {
   const [value, setValue] = useState(() => {
     try {
       const stored = localStorage.getItem(key)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        if (Array.isArray(fallback) && Array.isArray(parsed)) {
-          const merged = [...parsed]
-          fallback.forEach(item => {
-            if (!merged.some(m => m.id === item.id)) merged.push(item)
-          })
-          return merged
-        }
-        return parsed
+      if (stored !== null) {
+        return JSON.parse(stored)
       }
       return fallback
     } catch {
@@ -53,7 +45,7 @@ function useStored(key, fallback) {
 }
 
 export default function App() {
-  const getModeFromHash = () => window.location.hash.toLowerCase() === '#/student' ? 'student' : 'admin'
+  const getModeFromHash = () => window.location.hash.toLowerCase() === '#/admin' ? 'admin' : 'student'
   const [mode, setMode] = useState(getModeFromHash)
   const [tab, setTab] = useState('attendance')
   const [isDarkMode, setIsDarkMode] = useStored('MM-theme-dark', true)
@@ -196,8 +188,6 @@ export default function App() {
             <p>English Department <span>❖❖❖</span> Teacher Center OS</p>
           </div>
         </div>
-        
-        {/* تم حذف زر الانتقال لمساحة المدرس نهائياً من هنا لكي لا يظهر لأي طالب */}
         
         <div className="top-actions">
           <button className="icon-btn theme-toggle" onClick={toggleTheme} title="تغيير الثيم">
@@ -857,7 +847,7 @@ function Modal({ title, onClose, children }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3>{title}</h3>
-          <button onClick= {onClose}>×</button>
+          <button onClick={onClose}>×</button>
         </div>
         {children}
       </div>
