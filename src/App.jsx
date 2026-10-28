@@ -16,8 +16,27 @@ const gradeLabels = { '1sec': 'أولى ثانوي', '2sec': 'تانية ثان�
 const statusLabels = { present: 'حاضر', late: 'متأخر', absent: 'غائب' }
 
 function useStored(key, fallback) {
-  const [value, setValue] = useState(() => { try { return JSON.parse(localStorage.getItem(key)) || fallback } catch { return fallback } })
-  const update = (next) => { setValue(next); localStorage.setItem(key, JSON.stringify(next)) }
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key)
+      return stored ? JSON.parse(stored) : fallback
+    } catch {
+      return fallback
+    }
+  })
+
+  const update = (nextValue) => {
+    setValue((currentValue) => {
+      const resolvedValue = typeof nextValue === 'function' ? nextValue(currentValue) : nextValue
+      try {
+        localStorage.setItem(key, JSON.stringify(resolvedValue))
+      } catch {
+        // Keep the in-memory update working if browser storage is unavailable.
+      }
+      return resolvedValue
+    })
+  }
+
   return [value, update]
 }
 
@@ -34,8 +53,8 @@ export default function App() {
     const closeOnOutsideClick = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) setOpenMenu(null)
     }
-    document.addEventListener('pointerdown', closeOnOutsideClick)
-    return () => document.removeEventListener('pointerdown', closeOnOutsideClick)
+    document.addEventListener('pointerdown', closeOnOutsideClick, true)
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick, true)
   }, [])
 
   useEffect(() => {
@@ -90,9 +109,9 @@ export default function App() {
   }
 
   const deleteStudentHandler = (id) => {
+    setOpenMenu(null)
     if (window.confirm('حذف هذا الطالب؟ لا يمكن التراجع عن العملية.')) {
-      setStudents(students.filter((s) => s.id !== id));
-      setOpenMenu(null);
+      setStudents((currentStudents) => currentStudents.filter((student) => student.id !== id))
     }
   }
 
@@ -108,7 +127,7 @@ export default function App() {
       {tab === 'leaderboard' && <Leaderboard students={students} />}
     </main> : <StudentPortal input={portalInput} setInput={setPortalInput} login={login} student={portalStudent} sessions={sessions} />}
     {showStudent && <Modal title="إضافة طالب جديد" onClose={() => setShowStudent(false)}><form onSubmit={addStudent} className="form-grid">{[['name','اسم الطالب الثلاثي'],['phone','رقم الطالب'],['parentPhone','رقم ولي الأمر']].map(([key, label]) => <label key={key}>{label}<input required={key !== 'phone'} value={studentForm[key]} onChange={(e) => setStudentForm({ ...studentForm, [key]: e.target.value })} /></label>)}<label>الصف<select value={studentForm.grade} onChange={(e) => setStudentForm({ ...studentForm, grade: e.target.value })}><option value="1sec">أولى ثانوي</option><option value="2sec">تانية ثانوي</option><option value="3sec">تالتة ثانوي</option></select></label><label>السنتر<input value={studentForm.center} onChange={(e) => setStudentForm({ ...studentForm, center: e.target.value })} /></label><button className="primary full" type="submit">حفظ الطالب</button></form></Modal>}
-    {editingStudent && <Modal title="تعديل بيانات الطالب" onClose={() => setEditingStudent(null)}><form onSubmit={(e) => { e.preventDefault(); setStudents(students.map((s) => s.id === editingStudent.id ? editingStudent : s)); setEditingStudent(null) }} className="form-grid">{[['name','اسم الطالب الثلاثي'],['phone','رقم الطالب'],['parentPhone','رقم ولي الأمر'],['center','السنتر']].map(([key, label]) => <label key={key}>{label}<input required={key !== 'phone'} value={editingStudent[key] || ''} onChange={(e) => setEditingStudent({ ...editingStudent, [key]: e.target.value })} /></label>)}<label>الصف<select value={editingStudent.grade} onChange={(e) => setEditingStudent({ ...editingStudent, grade: e.target.value })}><option value="1sec">أولى ثانوي</option><option value="2sec">تانية ثانوي</option><option value="3sec">تالتة ثانوي</option></select></label><button className="primary full" type="submit">حفظ التعديلات</button></form></Modal>}
+    {editingStudent && <Modal title="تعديل بيانات الطالب" onClose={() => setEditingStudent(null)}><form onSubmit={(e) => { e.preventDefault(); setStudents((currentStudents) => currentStudents.map((student) => student.id === editingStudent.id ? { ...student, ...editingStudent } : student)); setOpenMenu(null); setEditingStudent(null) }} className="form-grid">{[['name','اسم الطالب الثلاثي'],['phone','رقم الطالب'],['parentPhone','رقم ولي الأمر'],['center','السنتر']].map(([key, label]) => <label key={key}>{label}<input required={key !== 'phone'} value={editingStudent[key] || ''} onChange={(e) => setEditingStudent({ ...editingStudent, [key]: e.target.value })} /></label>)}<label>الصف<select value={editingStudent.grade} onChange={(e) => setEditingStudent({ ...editingStudent, grade: e.target.value })}><option value="1sec">أولى ثانوي</option><option value="2sec">تانية ثانوي</option><option value="3sec">تالتة ثانوي</option></select></label><button className="primary full" type="submit">حفظ التعديلات</button></form></Modal>}
     {showSession && <Modal title="إنشاء حصة جديدة" onClose={() => setShowSession(false)}><form onSubmit={addSession} className="form-grid"><label className="wide">عنوان الحصة<input required value={sessionForm.title} onChange={(e) => setSessionForm({ ...sessionForm, title: e.target.value })} /></label><label>الصف<select value={sessionForm.grade} onChange={(e) => setSessionForm({ ...sessionForm, grade: e.target.value })}><option value="1sec">أولى ثانوي</option><option value="2sec">تانية ثانوي</option><option value="3sec">تالتة ثانوي</option></select></label><label>السنتر<input value={sessionForm.center} onChange={(e) => setSessionForm({ ...sessionForm, center: e.target.value })} /></label><label className="wide">اسم الشيت<input value={sessionForm.sheet} onChange={(e) => setSessionForm({ ...sessionForm, sheet: e.target.value })} placeholder="PDF أو رابط الملف" /></label><label className="wide">الواجب المطلوب<input value={sessionForm.homework} onChange={(e) => setSessionForm({ ...sessionForm, homework: e.target.value })} /></label><button className="primary full" type="submit">إنشاء الحصة</button></form></Modal>}
   </div>
 }
@@ -121,7 +140,7 @@ function Directory({ students, onDelete, onEdit, onAdd, openMenu, setOpenMenu, m
     window.open(`https://wa.me/${phone.startsWith('20') ? phone : `20${phone.replace(/^0/, '')}`}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
   }
 
-  return <section className="directory"><div className="section-title"><div><div className="eyebrow"><Users /> قاعدة البيانات</div><h2>دليل الطلاب</h2><p>كل ملفات طلابك في مكان واحد.</p></div><button className="primary" onClick={onAdd}><UserPlus /> تسجيل طالب</button></div><div className="student-grid">{students.map((s) => <article className="directory-card" key={s.id}><div className="card-top"><div className="avatar large">{s.name.slice(0,1)}</div><div className="action-menu" ref={openMenu === s.id ? menuRef : null}><button type="button" className="more" aria-label={`إجراءات ${s.name}`} aria-expanded={openMenu === s.id} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setOpenMenu((current) => current === s.id ? null : s.id) }}><MoreHorizontal /></button>{openMenu === s.id && <div className="action-popover" role="menu" onPointerDown={(e) => e.stopPropagation()}><button type="button" role="menuitem" onClick={() => { setOpenMenu(null); onEdit(s) }}>تعديل البيانات</button><button type="button" role="menuitem" onClick={() => { setOpenMenu(null); sendWhatsApp(s) }}>إرسال واتساب</button><button type="button" role="menuitem" onClick={() => { setOpenMenu(null); window.alert(`تقرير الطالب: ${s.name}`) }}>عرض التقرير</button><button type="button" role="menuitem" className="delete-action" onClick={() => { setOpenMenu(null); onDelete(s.id) }}>حذف الطالب</button></div>}</div></div><h3>{s.name}</h3><p>{s.id} · {gradeLabels[s.grade]}</p><div className="card-meta"><span>{s.center}</span><b><Award /> {s.points}</b></div></article>)}</div></section>
+  return <section className="directory"><div className="section-title"><div><div className="eyebrow"><Users /> قاعدة البيانات</div><h2>دليل الطلاب</h2><p>كل ملفات طلابك في مكان واحد.</p></div><button className="primary" onClick={onAdd}><UserPlus /> تسجيل طالب</button></div><div className="student-grid">{students.map((s) => <article className="directory-card" key={s.id}><div className="card-top"><div className="avatar large">{s.name.slice(0,1)}</div><div className="action-menu" ref={openMenu === s.id ? menuRef : null}><button type="button" className="more" aria-label={`إجراءات ${s.name}`} aria-expanded={openMenu === s.id} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setOpenMenu((current) => current === s.id ? null : s.id) }}><MoreHorizontal /></button>{openMenu === s.id && <div className="action-popover" role="menu" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}><button type="button" role="menuitem" onClick={() => { setOpenMenu(null); onEdit(s) }}>تعديل البيانات</button><button type="button" role="menuitem" onClick={() => { setOpenMenu(null); sendWhatsApp(s) }}>إرسال واتساب</button><button type="button" role="menuitem" onClick={() => { setOpenMenu(null); window.alert(`تقرير الطالب: ${s.name}`) }}>عرض التقرير</button><button type="button" role="menuitem" className="delete-action" onClick={() => { setOpenMenu(null); onDelete(s.id) }}>حذف الطالب</button></div>}</div></div><h3>{s.name}</h3><p>{s.id} · {gradeLabels[s.grade]}</p><div className="card-meta"><span>{s.center}</span><b><Award /> {s.points}</b></div></article>)}</div></section>
 }
 function Sessions({ sessions, onAdd, onDelete }) { return <section className="directory"><div className="section-title"><div><div className="eyebrow"><FileText /> المحتوى التعليمي</div><h2>الحصص والشيتات</h2><p>جهّز محتوى كل حصة وشاركه بسهولة.</p></div><button className="primary" onClick={onAdd}><Plus /> حصة جديدة</button></div><div className="session-grid">{sessions.map((s) => <article className="session-card" key={s.id}><div className="session-icon"><BookOpen /></div><div className="card-top"><span className="badge blue">{gradeLabels[s.grade]}</span><button className="danger" onClick={() => onDelete(s.id)}><Trash2 /></button></div><h3>{s.title}</h3><p>{s.date} · سنتر {s.center}</p><div className="resource"><FileText /> {s.sheet || 'لم يتم رفع شيت'} <Download /></div><div className="resource"><ClipboardList /> {s.homework || 'لا يوجد واجب'}</div></article>)}</div></section> }
 function Leaderboard({ students }) { return <section className="directory"><div className="section-title"><div><div className="eyebrow"><Award /> التحفيز</div><h2>لوحة الأوائل</h2><p>كافئ التقدم وحافظ على حماس طلابك.</p></div></div><div className="leaderboard">{[...students].sort((a,b) => b.points-a.points).map((s, i) => <div className="leader" key={s.id}><span className={`rank r${i+1}`}>{i+1}</span><div className="avatar">{s.name.slice(0,1)}</div><strong>{s.name}<small>{s.id}</small></strong><b><Award /> {s.points} نقطة</b></div>)}</div></section> }
