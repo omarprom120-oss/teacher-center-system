@@ -242,6 +242,27 @@ td{padding:14px 20px;border-top:1px solid #1b2a3d;font-size:11px;color:#dbe4ef}
 .schedule-slot strong{font-size:12px}
 .schedule-slot.muted{opacity:.58;background:#111c2c;border-color:#26364a}
 
+/* تعديل أزرار التعديل والحذف داخل كاردات الجدول لإزالة الخلفية البايظة */
+.schedule-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.schedule-actions button {
+  background: #101b2b !important;
+  color: #93c5fd !important;
+  border: 1px solid #2b415c !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+.schedule-actions button:last-child {
+  color: #fca5a5 !important;
+  border-color: #7f1d1d !important;
+  background: #24131a !important;
+}
+
 .announcement-form{display:grid;grid-template-columns:1fr 2fr auto;gap:10px;margin-bottom:18px}
 .announcement-form input{min-width:0;padding:12px 14px;border:1px solid #263b55;border-radius:12px;background:#0e1929;color:#e8eef9;outline:none}
 .announcement-list{display:grid;gap:12px}
