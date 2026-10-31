@@ -198,7 +198,7 @@ export default function App() {
     const record = recordFor(student.id); 
     const rawPhone = String(student.parentPhone || '').replace(/[^0-9]/g, ''); 
     const phone = rawPhone.startsWith('20') ? rawPhone : `20${rawPhone.replace(/^0/, '')}`; 
-    const msg = `السلام عليكم ولي أمر الطالب/ة: ${student.name} (كود: ${student.id})\nتقرير حصة الإنجليزي مع مستر محمد مارك: ${current.title}\n📌 حالة الحضور: ${statusLabels[record.status]}\n📝 درجة الكويز: ${record.score} / ${current.max}\n📚 الواجب المنزلي: ${record.homework ? 'تم التسليم' : 'لم يتم التسليم'}\n⭐ نقاط التميز الحالية: ${student.points}\nمع تحيات تيم مستر محمد مارك 🎓`; 
+    const msg = `السلام عليكم ولي أمر الطالب/ة: ${student.name} (كود: ${student.id})\nتقرير حصة الإنجليزي مع مستر محمد مارك: ${current.title}\n📌 حالة ال��ضور: ${statusLabels[record.status]}\n📝 درجة الكويز: ${record.score} / ${current.max}\n📚 الواجب المنزلي: ${record.homework ? 'تم التسليم' : 'لم يتم التسليم'}\n⭐ نقاط التميز الحالية: ${student.points}\nمع تحيات تيم مستر محمد مارك 🎓`; 
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
     setOpenMenu(null);
   }
@@ -251,7 +251,10 @@ export default function App() {
       </header>
 
       <a className="floating-whatsapp" href="https://wa.me/201097223288" target="_blank" rel="noreferrer" aria-label="تواصل واتساب">
-        <MessageCircle />
+        <svg className="whatsapp-logo" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <circle cx="16" cy="16" r="15" fill="currentColor" />
+          <path fill="#128C7E" d="M23.2 8.8a10.3 10.3 0 0 0-16.1 12L6 25.7l5.1-1.1a10.3 10.3 0 0 0 12.1-15.8Zm-7.1 14.1c-1.6 0-3.1-.4-4.5-1.2l-.3-.2-3 .7.8-2.9-.2-.3a8.4 8.4 0 1 1 7.2 3.9Zm4.6-6.3c-.2-.1-1.2-.6-1.4-.7-.2-.1-.3-.1-.5.1l-.7.9c-.1.1-.3.2-.5.1a6.8 6.8 0 0 1-2-1.2 7.7 7.7 0 0 1-1.4-1.7c-.1-.2 0-.3.1-.4l.4-.5.2-.4c.1-.1 0-.3 0-.4l-.6-1.5c-.2-.4-.3-.4-.5-.4h-.4c-.2 0-.4.1-.6.3a2.4 2.4 0 0 0-.8 1.8c0 1.1.8 2.2 1 2.4.1.2 1.6 2.5 3.9 3.5 2.3 1 2.3.7 2.7.7.4 0 1.2-.5 1.4-1 .2-.5.2-.9.1-1-.1-.1-.2-.1-.4-.2Z" />
+        </svg>
         <span>تواصل واتساب</span>
       </a>
 
