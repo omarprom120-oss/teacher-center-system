@@ -21,7 +21,7 @@ const initialSessions = [{ id: 'S-101', title: 'الباب الأول: شرح ا
 const gradeLabels = { '1sec': 'أولى ثانوي', '2sec': 'تانية ثانوي', '3sec': 'تالتة ثانوي' }
 const statusLabels = { present: 'حاضر', late: 'متأخر', absent: 'غائب' }
 
-// هوك مزامن مع سوبابيز سحابياً لتحديث البيانات على كل الأجهزة فوراً
+// هوك مزامن مع سوبابيز سحابياً لتحديث البيانات على كل الأجهزة فوراً بدون فقدان البيانات
 function useSupabaseState(key, fallback) {
   const [value, setValue] = useState(fallback)
   const [loaded, setLoaded] = useState(false)
@@ -41,10 +41,25 @@ function useSupabaseState(key, fallback) {
       .then(data => {
         if (data && data.length > 0 && data[0].value !== undefined) {
           setValue(data[0].value)
+        } else {
+          // إذا لم تكن البيانات موجودة مسبقاً في الجدول، يتم جدولتها بالقيم الافتتاحية للمزامنة بين الأجهزة
+          fetch(`${SUPABASE_URL}/rest/v1/kv_store?on_conflict=key`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify({ key, value: fallback })
+          }).catch(err => console.error('Seed error:', err))
         }
         setLoaded(true)
       })
-      .catch(() => setLoaded(true))
+      .catch(err => {
+        console.error('Fetch error:', err)
+        setLoaded(true)
+      })
   }, [key])
 
   const update = (nextValue) => {
@@ -52,7 +67,7 @@ function useSupabaseState(key, fallback) {
     setValue(resolved)
 
     if (SUPABASE_URL.includes('http')) {
-      fetch(`${SUPABASE_URL}/rest/v1/kv_store`, {
+      fetch(`${SUPABASE_URL}/rest/v1/kv_store?on_conflict=key`, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_ANON_KEY,
