@@ -21,7 +21,7 @@ const initialSessions = [{ id: 'S-101', title: 'الباب الأول: شرح ا
 const gradeLabels = { '1sec': 'أولى ثانوي', '2sec': 'تانية ثانوي', '3sec': 'تالتة ثانوي' }
 const statusLabels = { present: 'حاضر', late: 'متأخر', absent: 'غائب' }
 
-// هوك مزامن مع سوبابيز سحابياً لتحديث البيانات على كل الأجهزة فوراً بدون فقدان البيانات
+// هوك مزامن مع سوبابيز سحابياً لتحديث البيانات وتتبع الأخطاء بدقة لتثبيت الحذف والتعديل
 function useSupabaseState(key, fallback) {
   const [value, setValue] = useState(fallback)
   const [loaded, setLoaded] = useState(false)
@@ -42,7 +42,6 @@ function useSupabaseState(key, fallback) {
         if (data && data.length > 0 && data[0].value !== undefined) {
           setValue(data[0].value)
         } else {
-          // إذا لم تكن البيانات موجودة مسبقاً في الجدول، يتم جدولتها بالقيم الافتتاحية للمزامنة بين الأجهزة
           fetch(`${SUPABASE_URL}/rest/v1/kv_store?on_conflict=key`, {
             method: 'POST',
             headers: {
@@ -76,7 +75,14 @@ function useSupabaseState(key, fallback) {
           'Prefer': 'resolution=merge-duplicates'
         },
         body: JSON.stringify({ key, value: resolved })
-      }).catch(err => console.error('Sync error:', err))
+      })
+      .then(async res => {
+        if (!res.ok) {
+          const errText = await res.text()
+          console.error('Supabase Sync Error:', res.status, errText)
+        }
+      })
+      .catch(err => console.error('Sync error:', err))
     }
   }
 
