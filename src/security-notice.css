@@ -1,9 +1,0 @@
-.security-notice { min-height: 100vh; display: grid; place-items: center; padding: 1.25rem; box-sizing: border-box; background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
-.security-notice section { box-sizing: border-box; width: min(100%, 40rem); padding: clamp(1.5rem, 5vw, 3rem); border: 1px solid #334155; border-radius: 1rem; background: #1e293b; line-height: 1.9; }
-.security-notice h1 { font-size: clamp(1.5rem, 5vw, 2.25rem); line-height: 1.4; }
-.notice-label { color: #fbbf24; font-weight: bold; }
-.security-notice form { display: grid; gap: .75rem; }
-.security-notice input, .security-notice button { box-sizing: border-box; font: inherit; border-radius: .5rem; padding: .6rem .8rem; }
-.security-notice input { width: 100%; color: #0f172a; background: #fff; border: 1px solid #94a3b8; }
-.security-notice button { cursor: pointer; color: #0f172a; background: #fbbf24; border: 0; font-weight: 700; }
-.security-notice a { color: #fcd34d; }
