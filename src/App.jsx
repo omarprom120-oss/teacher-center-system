@@ -136,17 +136,22 @@ export default function App() {
   const [editingSchedule, setEditingSchedule] = useState(null)
   
   const current = sessions.find((item) => item.id === sessionId) || sessions[0]
-  const filtered = useMemo(() => students.filter((s) => s.grade === grade && (!query || `${s.name} ${s.id} ${s.phone}`.includes(query))), [students, grade, query])
-
+const filtered = useMemo(() => students.filter((s) => s.grade === current?.grade && s.center === current?.center && (!query || `${s.name} ${s.id} ${s.phone}`.includes(query))), [students, current?.grade, current?.center, query])
+  
   const recordFor = (id) => current?.records?.[id] || { status: 'present', score: 0, homework: false }
   
   const updateRecord = (id, patch) => {
+    if (!current) return
     const old = recordFor(id)
     const nextRecord = { ...old, ...patch }
     const nextRecords = { ...(current.records || {}), [id]: nextRecord }
     setSessions(sessions.map((s) => s.id === current.id ? { ...s, records: nextRecords } : s))
-    if (patch.status && patch.status !== old.status) {
-      setStudents(students.map((s) => s.id === id ? { ...s, points: Math.max(0, s.points + (patch.status === 'present' ? 10 : patch.status === 'late' ? 5 : 0) - (old.status === 'present' ? 10 : old.status === 'late' ? 5 : 0)) } : s))
+    const attendanceDelta = patch.status && patch.status !== old.status
+      ? (patch.status === 'present' ? 10 : patch.status === 'late' ? 5 : 0) - (old.status === 'present' ? 10 : old.status === 'late' ? 5 : 0)
+      : 0
+    const quizDelta = typeof patch.score === 'number' ? patch.score - Number(old.score || 0) : 0
+    if (attendanceDelta || quizDelta) {
+      setStudents(students.map((s) => s.id === id ? { ...s, points: Math.max(0, Number(s.points || 0) + attendanceDelta + quizDelta) } : s))
     }
   }
 
@@ -299,7 +304,12 @@ export default function App() {
               <section className="toolbar">
                 <div className="control">
                   <label>الحصة المفعلة</label>
-                  <select className="dark-styled-input" value={sessionId} onChange={(e) => setSessionId(e.target.value)}>
+                  <select className="dark-styled-input" value={sessionId} onChange={(e) => {
+                    const nextSessionId = e.target.value
+                    const nextSession = sessions.find((item) => item.id === nextSessionId)
+                    setSessionId(nextSessionId)
+                    if (nextSession) setGrade(nextSession.grade)
+                  }}>
                     {sessions.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
                   </select>
                 </div>
@@ -850,8 +860,8 @@ function StudentPortal({ input, setInput, login, student, error, sessions, sched
           </div>
           <div className="portal-schedule">
             <h4><CalendarDays /> جدول حصصي الأسبوعي</h4>
-            {schedule.filter((slot) => slot.grade === student.grade).length ? (
-              schedule.filter((slot) => slot.grade === student.grade).map((slot) => (
+            {schedule.filter((slot) => slot.grade === student.grade && slot.center === student.center).length ? (
+              schedule.filter((slot) => slot.grade === student.grade && slot.center === student.center).map((slot) => (
                 <div className="portal-schedule-row" key={slot.id}>
                   <strong>{slot.day}</strong>
                   <span>{slot.time}</span>
