@@ -135,8 +135,9 @@ export default function App() {
   const [scheduleForm, setScheduleForm] = useState({ day: 'السبت', center: 'النور', grade: '3sec', subject: 'English', time: '05:00 م' })
   const [editingSchedule, setEditingSchedule] = useState(null)
   
-  const current = sessions.find((item) => item.id === sessionId) || sessions[0]
-const filtered = useMemo(() => students.filter((s) => s.grade === current?.grade && s.center === current?.center && (!query || `${s.name} ${s.id} ${s.phone}`.includes(query))), [students, current?.grade, current?.center, query])
+  const safeSessions = sessions.length ? sessions : initialSessions
+  const current = safeSessions.find((item) => item.id === sessionId) || safeSessions[0]
+  const filtered = useMemo(() => students.filter((s) => s.grade === current?.grade && s.center === current?.center && (!query || `${s.name} ${s.id} ${s.phone}`.includes(query))), [students, current?.grade, current?.center, query])
   
   const recordFor = (id) => current?.records?.[id] || { status: 'present', score: 0, homework: false }
   
@@ -213,6 +214,19 @@ const filtered = useMemo(() => students.filter((s) => s.grade === current?.grade
     if (window.confirm('حذف هذا الطالب؟ لا يمكن التراجع عن العملية.')) {
       setStudents((currentStudents) => currentStudents.filter((student) => student.id !== id))
     }
+  }
+
+  const deleteSession = (id) => {
+    const remainingSessions = sessions.filter((session) => session.id !== id)
+    if (remainingSessions.length === 0) {
+      const fallbackSession = { ...initialSessions[0], id: 'S-default', records: {} }
+      setSessions([fallbackSession])
+      setSessionId(fallbackSession.id)
+      return
+    }
+
+    setSessions(remainingSessions)
+    if (sessionId === id) setSessionId(remainingSessions[0].id)
   }
 
   const login = (e) => {
@@ -292,7 +306,7 @@ const filtered = useMemo(() => students.filter((s) => s.grade === current?.grade
                 <span>{label}</span>
                 {['students', 'sessions', 'announcements'].includes(key) && (
                   <span className="count-badge">
-                    {key === 'students' ? students.length : key === 'sessions' ? sessions.length : announcements.length}
+                    {key === 'students' ? students.length : key === 'sessions' ? safeSessions.length : announcements.length}
                   </span>
                 )}
               </button>
@@ -306,11 +320,11 @@ const filtered = useMemo(() => students.filter((s) => s.grade === current?.grade
                   <label>الحصة المفعلة</label>
                   <select className="dark-styled-input" value={sessionId} onChange={(e) => {
                     const nextSessionId = e.target.value
-                    const nextSession = sessions.find((item) => item.id === nextSessionId)
+                    const nextSession = safeSessions.find((item) => item.id === nextSessionId)
                     setSessionId(nextSessionId)
                     if (nextSession) setGrade(nextSession.grade)
                   }}>
-                    {sessions.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+                    {safeSessions.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
                   </select>
                 </div>
                 <div className="control">
@@ -450,7 +464,7 @@ const filtered = useMemo(() => students.filter((s) => s.grade === current?.grade
           )}
 
           {tab === 'students' && <Directory students={students} onDelete={deleteStudentHandler} onEdit={setEditingStudent} onAdd={() => setShowStudent(true)} openMenu={openMenu} setOpenMenu={setOpenMenu} menuRef={menuRef} />}
-          {tab === 'sessions' && <Sessions sessions={sessions} onAdd={() => setShowSession(true)} onEdit={setEditingSession} onDelete={(id) => setSessions((currentSessions) => currentSessions.filter((s) => s.id !== id))} />}
+          {tab === 'sessions' && <Sessions sessions={sessions} onAdd={() => setShowSession(true)} onEdit={setEditingSession} onDelete={deleteSession} />}
           {tab === 'schedule' && <Schedule schedule={schedule} form={scheduleForm} setForm={setScheduleForm} editing={editingSchedule} setEditing={setEditingSchedule} onSubmit={saveSchedule} onDelete={(id) => setSchedule((items) => items.filter((slot) => slot.id !== id))} />}
           {tab === 'announcements' && <Announcements announcements={announcements} form={announcementForm} setForm={setAnnouncementForm} onSubmit={addAnnouncement} onDelete={(id) => setAnnouncements((items) => items.filter((item) => item.id !== id))} />}
           {tab === 'leaderboard' && <Leaderboard students={students} />}
