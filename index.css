@@ -20,3 +20,18 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+html, body, #root { max-width: 100vw; overflow-x: hidden; }
+*, *::before, *::after { box-sizing: border-box; }
+.point-adjust { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #334155; border-radius: 7px; background: #0f172a; font-size: 17px; line-height: 1; cursor: pointer; }
+.point-adjust:hover { background: #1e293b; }
+.point-minus { color: #fda4af; }
+.point-plus { color: #86efac; }
+@media (max-width: 640px) {
+  main { width: 100%; min-width: 0; }
+  table { min-width: 0; }
+  .overflow-x-auto { overflow-x: auto; max-width: 100%; }
+  header .max-w-7xl { align-items: stretch; }
+  header .max-w-7xl > div:last-child { width: 100%; flex-wrap: wrap; }
+  header button { min-height: 42px; }
+}

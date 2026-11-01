@@ -11,6 +11,8 @@ const INITIAL_STUDENTS = [
   { id: 'ST-1003', name: 'مريم محمود إبراهيم', grade: '2sec', center: 'سنتر التفوق - الإثنين 4ع', phone: '01234567890', parentPhone: '01276543210', points: 180 }
 ];
 
+const normalizeMatchText = (value) => String(value || '').trim().replace(/[\u0640\s_-]+/g, '').toLowerCase();
+
 const INITIAL_SESSIONS = [
   {
     id: 'SESS-101',
@@ -115,6 +117,13 @@ export default function App() {
     }
   };
 
+  const adjustStudentPoints = (studentId, amount) => {
+    setStudents((currentStudents) => currentStudents.map((student) => student.id === studentId
+      ? { ...student, points: Math.max(0, Number(student.points || 0) + amount) }
+      : student
+    ));
+  };
+
   const handleAddSessionSubmit = (e) => {
     e.preventDefault();
     if (!newSessionData.title) return;
@@ -143,7 +152,7 @@ export default function App() {
       setStudents(prev => prev.map(s => s.id === studentId ? { ...s, points: s.points + 10 } : s));
     }
 
-    setSessions(sessions.map(s => s.id === currentSession.id ? { ...s, attendanceRecords: updatedRecords } : s));
+    setSessions((currentSessions) => currentSessions.map(s => s.id === currentSession.id ? { ...s, attendanceRecords: updatedRecords } : s));
   };
 
   const sendWhatsappToParent = (student) => {
@@ -181,10 +190,13 @@ export default function App() {
     }
   };
 
+  const activeGrade = currentSession?.grade || filterGrade;
+  const activeCenter = currentSession?.center || filterCenter;
+  const normalizedQuery = normalizeMatchText(searchQuery);
   const filteredStudents = students.filter(s => {
-    const matchGrade = s.grade === filterGrade;
-    const matchCenter = s.center === filterCenter;
-    const matchQuery = !searchQuery || s.name.includes(searchQuery) || s.id.includes(searchQuery) || s.phone.includes(searchQuery);
+    const matchGrade = normalizeMatchText(s.grade) === normalizeMatchText(activeGrade);
+    const matchCenter = normalizeMatchText(s.center) === normalizeMatchText(activeCenter);
+    const matchQuery = !normalizedQuery || normalizeMatchText(`${s.name} ${s.id} ${s.phone}`).includes(normalizedQuery);
     return matchGrade && matchCenter && matchQuery;
   });
 
@@ -364,7 +376,11 @@ export default function App() {
                               <td className="p-4 font-mono font-bold text-blue-400">{student.id}</td>
                               <td className="p-4 font-bold text-white">
                                 {student.name}
-                                <div className="text-xs font-normal text-slate-400">⭐ {student.points} نقطة</div>
+                                <div className="text-xs font-normal text-slate-400 flex items-center gap-2">
+                                  <button type="button" onClick={() => adjustStudentPoints(student.id, -1)} aria-label="خصم نقطة" className="point-adjust point-minus">−</button>
+                                  <span>{student.points || 0} نقطة</span>
+                                  <button type="button" onClick={() => adjustStudentPoints(student.id, 1)} aria-label="إضافة نقطة" className="point-adjust point-plus">+</button>
+                                </div>
                               </td>
                               <td className="p-4">
                                 <div className="flex items-center gap-1.5">
@@ -564,7 +580,7 @@ export default function App() {
               <div className="flex items-center justify-between bg-slate-800 p-4 rounded-2xl border border-slate-700">
                 <div>
                   <h2 className="text-base font-bold text-white">إدارة الحصص والمحتوى</h2>
-                  <p className="text-xs text-slate-400">رفع الشيتات والواجبات المنزلية واختبارات الحصص</p>
+                  <p className="text-xs text-slate-400">رفع الشيتات والواجبات ال��نزلية واختبارات الحصص</p>
                 </div>
                 <button
                   onClick={() => setShowAddSessionModal(true)}
