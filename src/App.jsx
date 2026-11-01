@@ -121,7 +121,11 @@ export default function App() {
     { id: 'T-2', day: 'الأحد', center: 'الأمل', grade: '2sec', subject: 'English', time: '07:00 م' },
     { id: 'T-3', day: 'الثلاثاء', center: 'النور', grade: '1sec', subject: 'English', time: '05:00 م' },
   ])
-
+  const [centers, setCenters] = useSupabaseState('mm-centers', [
+    { id: 'C- النادي', name: 'كولدج النادي', grades: ['1sec', '2sec', '3sec'] },
+    { id: 'C- حورس', name: 'كولدج حورس', grades: ['1sec', '2sec'] },
+  ])
+  
   const [sessionId, setSessionId] = useState(initialSessions[0].id)
   const [grade, setGrade] = useState('3sec')
   const [query, setQuery] = useState('')
@@ -236,6 +240,36 @@ export default function App() {
     if (sessionId === id) setSessionId(remainingSessions[0]?.id || null)
   }
 
+  const addCenter = () => {
+    const name = window.prompt('اكتب اسم السنتر الجديد')?.trim()
+    if (!name || centers.some((center) => center.name === name)) return
+    setCenters((items) => [...items, { id: `C-${Date.now()}`, name, grades: ['1sec', '2sec', '3sec'] }])
+  }
+
+  const openCenterGrade = (center, selectedGrade) => {
+    const matchingSession = sessions.find((session) => session.center === center && session.grade === selectedGrade)
+    if (matchingSession) {
+      setSessionId(matchingSession.id)
+      setGrade(selectedGrade)
+      return
+    }
+
+    const newSession = {
+      id: `S-${Date.now()}`,
+      title: `${center} — ${gradeLabels[selectedGrade]}`,
+      grade: selectedGrade,
+      center,
+      date: new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }),
+      max: 20,
+      sheet: '',
+      homework: '',
+      records: {},
+    }
+    setSessions((items) => [newSession, ...items])
+    setSessionId(newSession.id)
+    setGrade(selectedGrade)
+  }
+
   const login = (e) => {
     e.preventDefault()
     const value = portalInput.trim().toLowerCase()
@@ -322,6 +356,41 @@ export default function App() {
 
           {tab === 'attendance' && (
             <>
+              <section className="attendance-centers" aria-labelledby="attendance-centers-title">
+                <div className="attendance-centers-head">
+                  <div>
+                    <span className="eyebrow"><Users /> تنظيم سريع</span>
+                    <h3 id="attendance-centers-title">اختر السنتر والمجموعة</h3>
+                    <p>ابدأ من السنتر، ثم اختر الصف لفتح الحصة وتسجيل الحضور.</p>
+                  </div>
+                  <button className="secondary add-center-button" onClick={addCenter}><Plus /> إضافة سنتر جديد</button>
+                </div>
+                <div className="center-cards">
+                  {centers.map((center) => (
+                    <article className="center-card" key={center.id}>
+                      <div className="center-card-top">
+                        <div className="center-icon"><Users /></div>
+                        <span>{center.grades.length} مجموعات</span>
+                      </div>
+                      <h4>{center.name}</h4>
+                      <div className="center-grades">
+                        {center.grades.map((centerGrade) => {
+                          const count = students.filter((student) => student.center === center.name && student.grade === centerGrade).length
+                          const isActive = current.center === center.name && current.grade === centerGrade
+                          return (
+                            <button key={centerGrade} className={`grade-action ${isActive ? 'active' : ''}`} onClick={() => openCenterGrade(center.name, centerGrade)}>
+                              <span>{gradeLabels[centerGrade]}</span>
+                              <b>{count} طالب</b>
+                              <ChevronDown />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
               <section className="toolbar">
                 <div className="control">
                   <label>الحصة المفعلة</label>
