@@ -24,6 +24,7 @@ const statusLabels = { present: 'حاضر', late: 'متأخر', absent: 'غائ�
 // هوك مزامن مع سوبابيز سحابياً لتحديث البيانات على كل الأجهزة فوراً بدون فقدان
 function useSupabaseState(key, fallback) {
   const [value, setValue] = useState(fallback)
+  const valueRef = useRef(fallback)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -40,6 +41,7 @@ function useSupabaseState(key, fallback) {
       .then(res => res.json())
       .then(data => {
         if (data && data.length > 0 && data[0].value !== undefined) {
+          valueRef.current = data[0].value
           setValue(data[0].value)
         }
         setLoaded(true)
@@ -48,7 +50,8 @@ function useSupabaseState(key, fallback) {
   }, [key])
 
   const update = (nextValue) => {
-    const resolved = typeof nextValue === 'function' ? nextValue(value) : nextValue
+    const resolved = typeof nextValue === 'function' ? nextValue(valueRef.current) : nextValue
+    valueRef.current = resolved
     setValue(resolved)
 
     if (SUPABASE_URL.includes('http')) {
@@ -135,8 +138,18 @@ export default function App() {
   const [scheduleForm, setScheduleForm] = useState({ day: 'السبت', center: 'النور', grade: '3sec', subject: 'English', time: '05:00 م' })
   const [editingSchedule, setEditingSchedule] = useState(null)
   
-  const safeSessions = sessions.length ? sessions : initialSessions
-  const current = safeSessions.find((item) => item.id === sessionId) || safeSessions[0]
+  const safeSessions = sessions
+  const current = safeSessions.find((item) => item.id === sessionId) || {
+    id: null,
+    title: 'لا توجد حصة مفعلة',
+    grade,
+    center: '—',
+    date: 'أضف حصة جديدة للبدء',
+    max: 20,
+    sheet: '',
+    homework: '',
+    records: {},
+  }
   const filtered = useMemo(() => students.filter((s) => s.grade === current?.grade && s.center === current?.center && (!query || `${s.name} ${s.id} ${s.phone}`.includes(query))), [students, current?.grade, current?.center, query])
   
   const recordFor = (id) => current?.records?.[id] || { status: 'present', score: 0, homework: false }
@@ -146,7 +159,8 @@ export default function App() {
     const old = recordFor(id)
     const nextRecord = { ...old, ...patch }
     const nextRecords = { ...(current.records || {}), [id]: nextRecord }
-    setSessions(sessions.map((s) => s.id === current.id ? { ...s, records: nextRecords } : s))
+    if (!current.id) return
+    setSessions((currentSessions) => currentSessions.map((s) => s.id === current.id ? { ...s, records: nextRecords } : s))
     const attendanceDelta = patch.status && patch.status !== old.status
       ? (patch.status === 'present' ? 10 : patch.status === 'late' ? 5 : 0) - (old.status === 'present' ? 10 : old.status === 'late' ? 5 : 0)
       : 0
@@ -218,15 +232,8 @@ export default function App() {
 
   const deleteSession = (id) => {
     const remainingSessions = sessions.filter((session) => session.id !== id)
-    if (remainingSessions.length === 0) {
-      const fallbackSession = { ...initialSessions[0], id: 'S-default', records: {} }
-      setSessions([fallbackSession])
-      setSessionId(fallbackSession.id)
-      return
-    }
-
     setSessions(remainingSessions)
-    if (sessionId === id) setSessionId(remainingSessions[0].id)
+    if (sessionId === id) setSessionId(remainingSessions[0]?.id || null)
   }
 
   const login = (e) => {
