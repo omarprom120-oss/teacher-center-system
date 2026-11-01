@@ -356,6 +356,11 @@ td{padding:14px 20px;border-top:1px solid #1b2a3d;font-size:11px;color:#dbe4ef}
   td:first-child::before{display:none}
   .student-cell{min-width:0}
   .student-cell strong,.student-cell small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .points-control{display:flex;align-items:center;gap:6px;margin-top:5px;color:#93c5fd;font-size:11px}
+  .points-control button{width:28px;height:28px;border:1px solid #2f4663;border-radius:8px;background:#142238;color:#dbeafe;font-size:18px;line-height:1;cursor:pointer}
+  .points-control button:first-child{color:#fda4af}
+  .points-control button:last-child{color:#86efac}
+  .points-control button:active{transform:scale(.94)}
   .status-pills{flex-wrap:wrap;justify-content:flex-end}
   .status-pills button,.wa,.schedule-actions button{min-height:40px;padding:9px 10px!important}
   .toolbar{display:grid;grid-template-columns:1fr;align-items:stretch;padding:12px;gap:10px}

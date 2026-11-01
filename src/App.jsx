@@ -20,6 +20,7 @@ const initialStudents = [
 const initialSessions = [{ id: 'S-101', title: 'الباب الأول: شرح القوانين والمسائل', grade: '3sec', center: 'النور', date: '28 أكتوبر 2026', max: 20, sheet: 'ملخص الباب الأول.pdf', homework: 'حل تدريبات كتاب الامتحان ص 15–20', records: { 'MM-1001': { status: 'present', score: 19, homework: true }, 'MM-1002': { status: 'late', score: 14, homework: false } } }]
 const gradeLabels = { '1sec': 'أولى ثانوي', '2sec': 'تانية ثانوي', '3sec': 'تالتة ثانوي' }
 const statusLabels = { present: 'حاضر', late: 'متأخر', absent: 'غائب' }
+const normalizeMatchText = (value) => String(value || '').trim().replace(/[\u0640\s_-]+/g, '').toLowerCase()
 
 // هوك مزامن مع سوبابيز سحابياً لتحديث البيانات على كل الأجهزة فوراً بدون فقدان
 function useSupabaseState(key, fallback) {
@@ -154,7 +155,17 @@ export default function App() {
     homework: '',
     records: {},
   }
-  const filtered = useMemo(() => students.filter((s) => s.grade === current?.grade && s.center === current?.center && (!query || `${s.name} ${s.id} ${s.phone}`.includes(query))), [students, current?.grade, current?.center, query])
+  const filtered = useMemo(() => {
+    const activeCenter = normalizeMatchText(current?.center)
+    const activeGrade = normalizeMatchText(current?.grade)
+    const normalizedQuery = normalizeMatchText(query)
+    return students.filter((student) => {
+      const studentCenter = normalizeMatchText(student.center)
+      const studentGrade = normalizeMatchText(student.grade)
+      const searchable = normalizeMatchText(`${student.name} ${student.id} ${student.phone}`)
+      return studentGrade === activeGrade && studentCenter === activeCenter && (!normalizedQuery || searchable.includes(normalizedQuery))
+    })
+  }, [students, current?.grade, current?.center, query])
   
   const recordFor = (id) => current?.records?.[id] || { status: 'present', score: 0, homework: false }
   
@@ -170,8 +181,15 @@ export default function App() {
       : 0
     const quizDelta = typeof patch.score === 'number' ? patch.score - Number(old.score || 0) : 0
     if (attendanceDelta || quizDelta) {
-      setStudents(students.map((s) => s.id === id ? { ...s, points: Math.max(0, Number(s.points || 0) + attendanceDelta + quizDelta) } : s))
+      setStudents((currentStudents) => currentStudents.map((student) => student.id === id ? { ...student, points: Math.max(0, Number(student.points || 0) + attendanceDelta + quizDelta) } : student))
     }
+  }
+
+  const adjustPoints = (id, amount) => {
+    setStudents((currentStudents) => currentStudents.map((student) => student.id === id
+      ? { ...student, points: Math.max(0, Number(student.points || 0) + amount) }
+      : student
+    ))
   }
 
   const addStudent = (e) => { 
@@ -247,7 +265,7 @@ export default function App() {
   }
 
   const openCenterGrade = (center, selectedGrade) => {
-    const matchingSession = sessions.find((session) => session.center === center && session.grade === selectedGrade)
+    const matchingSession = sessions.find((session) => normalizeMatchText(session.center) === normalizeMatchText(center) && normalizeMatchText(session.grade) === normalizeMatchText(selectedGrade))
     if (matchingSession) {
       setSessionId(matchingSession.id)
       setGrade(selectedGrade)
@@ -375,8 +393,8 @@ export default function App() {
                       <h4>{center.name}</h4>
                       <div className="center-grades">
                         {center.grades.map((centerGrade) => {
-                          const count = students.filter((student) => student.center === center.name && student.grade === centerGrade).length
-                          const isActive = current.center === center.name && current.grade === centerGrade
+                          const count = students.filter((student) => normalizeMatchText(student.center) === normalizeMatchText(center.name) && normalizeMatchText(student.grade) === normalizeMatchText(centerGrade)).length
+                          const isActive = normalizeMatchText(current.center) === normalizeMatchText(center.name) && normalizeMatchText(current.grade) === normalizeMatchText(centerGrade)
                           return (
                             <button key={centerGrade} className={`grade-action ${isActive ? 'active' : ''}`} onClick={() => openCenterGrade(center.name, centerGrade)}>
                               <span>{gradeLabels[centerGrade]}</span>
@@ -466,6 +484,11 @@ export default function App() {
                                 <div>
                                   <strong>{student.name}</strong>
                                   <small>{student.id} · {student.center}</small>
+                                  <div className="points-control" aria-label={`نقاط ${student.name}`}>
+                                    <button type="button" onClick={() => adjustPoints(student.id, -1)} aria-label="خصم نقطة">−</button>
+                                    <strong>{student.points || 0} نقطة</strong>
+                                    <button type="button" onClick={() => adjustPoints(student.id, 1)} aria-label="إضافة نقطة">+</button>
+                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -604,7 +627,7 @@ export default function App() {
             {[
               ['name', 'اسم الطالب الثلاثي'],
               ['phone', 'رقم الطالب'],
-              ['parentPhone', 'رقم ولي الأمر'],
+              ['parentPhone', 'رقم ولي ��لأمر'],
               ['center', 'السنتر']
             ].map(([key, label]) => (
               <label key={key}>
@@ -914,7 +937,7 @@ function StudentPortal({ input, setInput, login, student, error, sessions, sched
           <form className="login-card" onSubmit={login}>
             <div className="login-icon"><Lock /></div>
             <h3>دخول الطالب</h3>
-            <p>اكتب الكود الخاص بك (مثل MM-1005) أو رقم الهاتف للوصول إلى ملفك.</p>
+            <p>اكتب الكود الخا�� بك (مثل MM-1005) أو رقم الهاتف للوصول إلى ملفك.</p>
             {error && <div className="login-error" role="alert">{error}</div>}
             <label>الكود أو رقم الهاتف
               <input className="dark-styled-input" autoFocus value={input} onChange={(e) => setInput(e.target.value)} placeholder="MM-1001 أو رقم الهاتف" />
